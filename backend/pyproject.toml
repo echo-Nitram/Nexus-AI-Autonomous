@@ -1,0 +1,13 @@
+[project]
+name = "nexus-ai-trader"
+version = "2.0.0"
+description = "Nexus AI Autonomous Trader - Agentic Trading Ecosystem"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
