@@ -15,6 +15,18 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // Auth
+  login: (username: string, password: string) => {
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
+    return fetchApi<AuthToken>("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData.toString(),
+    });
+  },
+
   // Dashboard
   getPortfolio: (userId: string) =>
     fetchApi<PortfolioSummary>(`/dashboard/portfolio/${userId}`),
@@ -43,6 +55,29 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Agent
+  startAgent: (userId: string, strategyId: string, intervalSeconds = 300) =>
+    fetchApi<{ message: string }>("/agent/start", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: userId,
+        strategy_id: strategyId,
+        interval_seconds: intervalSeconds,
+      }),
+    }),
+
+  stopAgent: (userId: string, strategyId: string) =>
+    fetchApi<{ message: string }>("/agent/stop", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: userId,
+        strategy_id: strategyId,
+      }),
+    }),
+
+  getAgentStatus: (userId: string) =>
+    fetchApi<AgentStatus[]>(`/agent/status/${userId}`),
 };
 
 // Types
@@ -90,4 +125,16 @@ export interface CreateStrategy {
   description: string;
   timeframe: string;
   pairs: string[];
+}
+
+export interface AuthToken {
+  access_token: string;
+  token_type: string;
+  user_id: string;
+}
+
+export interface AgentStatus {
+  running: boolean;
+  user_id: string | null;
+  strategy_id: string | null;
 }

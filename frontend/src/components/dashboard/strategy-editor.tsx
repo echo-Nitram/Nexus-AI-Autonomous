@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
+import { useUserId } from "@/lib/hooks";
 
 const exampleStrategies = [
   "Busca divergencias en el RSI de 15m pero solo opera si el sentimiento en Twitter es alcista",
@@ -11,27 +13,35 @@ const exampleStrategies = [
 ];
 
 export function StrategyEditor() {
+  const userId = useUserId();
   const [strategy, setStrategy] = useState("");
   const [name, setName] = useState("");
   const [timeframe, setTimeframe] = useState("15m");
   const [pairs, setPairs] = useState("BTC/USDT");
   const [parsedRules, setParsedRules] = useState<Record<string, unknown> | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleParse = async () => {
-    // In production, this calls the API to parse the strategy with the LLM
-    setParsedRules({
-      entry_conditions: [
-        { type: "rsi_divergence", timeframe, direction: "bullish" },
-        { type: "sentiment", source: "social", required: "bullish" },
-      ],
-      exit_conditions: [
-        { type: "take_profit", percentage: 4 },
-        { type: "stop_loss", percentage: 2 },
-      ],
-      indicators: ["RSI", "EMA", "volume"],
-      timeframe,
-      sentiment_filter: true,
-    });
+    if (!strategy.trim() || !name.trim()) return;
+    setParsing(true);
+    setMessage(null);
+    try {
+      const result = await api.createStrategy({
+        user_id: userId,
+        name,
+        description: strategy,
+        timeframe,
+        pairs: pairs.split(",").map((p) => p.trim()).filter(Boolean),
+      });
+      setParsedRules(result.parsed_rules);
+      setMessage({ type: "success", text: `Strategy "${result.name}" created and parsed successfully` });
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed to parse strategy" });
+    } finally {
+      setParsing(false);
+    }
   };
 
   return (
@@ -107,14 +117,24 @@ export function StrategyEditor() {
           <div className="flex gap-2">
             <button
               onClick={handleParse}
-              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
+              disabled={parsing || !strategy.trim() || !name.trim()}
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Parse Strategy with AI
-            </button>
-            <button className="px-4 py-2 bg-secondary text-foreground text-sm font-medium rounded-md hover:bg-secondary/80 transition-colors">
-              Deploy Agent
+              {parsing ? "Parsing..." : "Parse Strategy with AI"}
             </button>
           </div>
+
+          {message && (
+            <div
+              className={`text-sm p-3 rounded-md ${
+                message.type === "success"
+                  ? "bg-green-500/10 text-green-400"
+                  : "bg-red-500/10 text-red-400"
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
 
           {/* Example strategies */}
           <div className="pt-2">

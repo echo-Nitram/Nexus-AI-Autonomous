@@ -1,16 +1,20 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.models.database import init_db
+from app.models.database import init_db, engine
 from app.api import router as api_router
 
 settings = get_settings()
 
-logging.basicConfig(level=getattr(logging, settings.log_level))
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +24,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
     yield
+    await engine.dispose()
     logger.info("Shutting down Nexus AI Autonomous Trader")
 
 
@@ -39,6 +44,15 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 
 @app.get("/health")
