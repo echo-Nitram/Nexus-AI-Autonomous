@@ -1,37 +1,25 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine
 
-# Install dependencies
-FROM base AS deps
 WORKDIR /app
+
+# Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci 2>/dev/null || npm install
 
-# Build
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Install dependencies (--legacy-peer-deps avoids strict peer dep errors)
+RUN npm install --legacy-peer-deps
+
+# Copy source code
 COPY . .
 
+# Build the Next.js app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV BACKEND_URL=http://backend:8000
 RUN npm run build
 
-# Production
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
+# Expose port and run
 EXPOSE 3000
+ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
