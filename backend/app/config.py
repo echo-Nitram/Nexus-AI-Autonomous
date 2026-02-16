@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     encryption_key: str = ""
 
     # Database
-    database_url: str = "postgresql+asyncpg://nexus:nexus_secret@localhost:5432/nexus_trader"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+asyncpg://nexus:nexus_secret@127.0.0.1:5432/nexus_trader"
+    redis_url: str = "redis://127.0.0.1:6379/0"
 
     # LLM
     llm_provider: str = "anthropic"
